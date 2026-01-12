@@ -63,7 +63,7 @@ with st.container():
 
 # Anı Üretme Fonksiyonu
 def ani_uret(kelimeler, yil, ton):
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    model = genai.GenerativeModel('gemini-1.5-flash')
     
     prompt = f"""
     Sen Altınay'ın yakın bir arkadaşısın ve onun hakkında bir anı anlatıyorsun. 
@@ -107,4 +107,5 @@ if uret_btn:
                 c3.link_button("🔄 Yeni Anı", "/")
                 
             except Exception as e:
+
                 st.error(f"Bir hata oluştu: {e}")
