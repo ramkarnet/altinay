@@ -8,107 +8,90 @@ st.set_page_config(
     layout="centered"
 )
 
-# 2. ŞIK GÖRSEL TASARIM (CSS)
+# 2. ŞIK GÖRSEL TASARIM
 st.markdown("""
     <style>
-    .stApp { background-color: #f4f7f6; }
-    .ani-kart {
+    .stApp { background-color: #f0f2f6; }
+    .ani-kutusu {
         background-color: white;
-        padding: 30px;
-        border-radius: 20px;
-        border-left: 10px solid #6c5ce7;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-        color: #2d3436;
+        padding: 25px;
+        border-radius: 15px;
+        border-left: 8px solid #6c5ce7;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        color: #1f1f1f;
         font-family: 'serif';
-        font-size: 1.15rem;
-        line-height: 1.8;
+        font-size: 1.1rem;
+        line-height: 1.6;
     }
-    .main-title { color: #6c5ce7; text-align: center; font-weight: 800; font-size: 2.5rem; }
+    .baslik { color: #6c5ce7; text-align: center; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
 # 3. API YAPILANDIRMASI
-# Streamlit Cloud panelinde Settings > Secrets kısmına GEMINI_API_KEY eklediğinizden emin olun!
+# Streamlit Secrets'ta GEMINI_API_KEY tanımlı olmalıdır.
 try:
     if "GEMINI_API_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     else:
-        st.warning("⚠️ API anahtarı Secrets kısmında bulunamadı!")
+        st.error("🔑 API anahtarı Secrets kısmında bulunamadı!")
 except Exception as e:
     st.error(f"Bağlantı Hatası: {e}")
 
-# 4. ANI ÜRETME FONKSİYONU (HATA ÖNLEYİCİ)
+# 4. ANI ÜRETME FONKSİYONU (404 HATASI ÖNLEYİCİ)
 def ani_uret(kelimeler, yil, ton):
-    # En stabil modelleri sırayla dener
-    modeller = ['models/gemini-1.5-flash', 'models/gemini-pro']
-    
-    prompt = f"""
-    Sen Altınay'ın en yakın arkadaşısın. 
-    Altınay: Her şeyle bir anısı olan, inanılmaz şanslı veya tuhaf olaylar yaşayan efsane biridir.
-    
-    Görev: {yil} yılında geçen, içinde şu anahtar kelimelerin olduğu bir anı anlat: {kelimeler}
-    Anı Tonu: {ton}
-    
-    Kurallar:
-    - Birinci şahıs (ben) ağzından anlat.
-    - Altınay'ın bu konudaki absürt bir anısını detaylandır.
-    - Yaklaşık 200-250 kelime olsun.
-    - Sadece anıyı yaz, giriş/açıklama yapma.
-    """
-
-    last_error = ""
-    for model_adi in modeller:
+    # Senin hatanı çözmek için model ismini v1 standardına çekiyoruz
+    # 'gemini-1.5-flash' yerine en temel 'gemini-pro' deniyoruz
+    try:
+        model = genai.GenerativeModel('gemini-pro')
+        
+        prompt = f"""
+        Sen Altınay'ın yakın bir arkadaşısın. Altınay'ın her konuda efsanevi bir anısı vardır.
+        Şu anahtar kelimelerle ilgili {yil} yılında yaşanmış {ton} bir anı anlat: {kelimeler}
+        
+        Kurallar:
+        - Birinci şahıs (ben) ağzından anlat.
+        - Altınay'ın bu konudaki absürtlüğünü vurgula.
+        - Yaklaşık 200 kelime olsun.
+        - Direkt hikayeye başla.
+        """
+        
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        # Eğer yukarıdaki de hata verirse 1.5-flash sürümünü tam yol ile dene
         try:
-            model = genai.GenerativeModel(model_adi)
+            model = genai.GenerativeModel('models/gemini-1.5-flash')
             response = model.generate_content(prompt)
-            if response and response.text:
-                return response.text
-        except Exception as e:
-            last_error = str(e)
-            continue # Bu model hata verirse diğerini dene
-            
-    return f"Maalesef anı üretilemedi. Hata: {last_error}"
+            return response.text
+        except Exception as e2:
+            return f"Üretim Hatası: {str(e2)}"
 
-# 5. ARAYÜZ (UI) TASARIMI
-st.markdown("<h1 class='main-title'>🎭 ALTINAY ANI ÜRETİCİ</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size: 1.2rem;'>Her şeyle anısı olan o efsane arkadaş...</p>", unsafe_allow_html=True)
+# 5. ARAYÜZ TASARIMI
+st.markdown("<h1 class='baslik'>🎭 ALTINAY ANI ÜRETİCİ</h1>", unsafe_allow_html=True)
+st.write("---")
 
-# Giriş Bölümü
-with st.container():
-    st.markdown("---")
-    kelimeler = st.text_input("🔑 Anahtar Kelimeler (Örn: pizza, nasa, kedi, kutuplar)", placeholder="Neyle ilgili bir anı olsun?")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        yil = st.slider("📅 Hangi Yıldı?", 1990, 2026, 2018)
-    with col2:
-        ton = st.selectbox("🎭 Anının Havası", ["Komik", "Absürt", "Epik", "Dramatik", "Nostaljik"])
+# Kullanıcı Girişleri
+kelimeler = st.text_input("🔑 Anahtar Kelimeler", placeholder="Örn: helikopter, pazar tezgahı, kuantum fiziği")
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    uret_btn = st.button("✨ Efsanevi Anıyı Getir", use_container_width=True)
+col1, col2 = st.columns(2)
+with col1:
+    yil = st.number_input("📅 Yıl", 1990, 2026, 2018)
+with col2:
+    ton = st.selectbox("🎭 Ton", ["Komik", "Absürt", "Epik", "Dramatik", "Nostaljik"])
 
-# Sonuç Ekranı
-if uret_btn:
-    if not kelimeler:
-        st.warning("Altınay'ın hafızasını tazelemek için birkaç kelime yazmalısın!")
-    else:
-        with st.spinner("🌀 Altınay o günü hatırlamaya çalışıyor..."):
-            ani_sonucu = ani_uret(kelimeler, yil, ton)
-            
+st.markdown("<br>", unsafe_allow_html=True)
+if st.button("✨ Efsanevi Anıyı Getir", use_container_width=True):
+    if kelimeler:
+        with st.spinner("🌀 Altınay o günü hatırlıyor..."):
+            sonuc = ani_uret(kelimeler, yil, ton)
             st.markdown(f"### 📖 Altınay'ın {yil} Serüveni")
-            st.markdown(f'<div class="ani-kart"><i>"{ani_sonucu}"</i></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="ani-kutusu">{sonuc}</div>', unsafe_allow_html=True)
             
-            # Alt Etkileşimler
-            st.write("---")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                if st.button("👍 Efsane!"): st.balloons()
-            with c2:
-                if st.button("😂 Sesli Güldüm"): st.snow()
-            with c3:
-                st.button("🔄 Yeni Anı") # Sayfayı otomatik yeniler
+            # Eğlence
+            if "Hata" not in sonuc:
+                st.balloons()
+    else:
+        st.warning("Lütfen birkaç kelime yazın.")
 
-# Sidebar
-st.sidebar.title("📌 İpucu")
-st.sidebar.info("Altınay her şeyi bilir, her yerdedir. Ne kadar absürt kelimeler seçersen o kadar şaşırırsın!")
-st.sidebar.caption("v2.0 - Billing & Model Fix")
+st.sidebar.title("📌 Not")
+st.sidebar.info("Eğer 404 hatası almaya devam ederseniz, Google AI Studio'dan yeni bir API anahtarı alıp Secrets kısmını güncelleyin.")
