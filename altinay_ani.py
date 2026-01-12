@@ -1,111 +1,108 @@
 import streamlit as st
 import google.generativeai as genai
-import random
 
-# Sayfa Ayarları
+# 1. SAYFA AYARLARI
 st.set_page_config(
     page_title="Altınay Anı Üretici v2.0",
     page_icon="🎭",
     layout="centered"
 )
 
-# Custom CSS - Uygulamayı şıklaştıralım
+# 2. GÖRSEL TASARIM (CSS)
 st.markdown("""
     <style>
     .ani-kart {
-        background-color: #f0f2f6;
-        padding: 20px;
+        background-color: #ffffff;
+        padding: 25px;
         border-radius: 15px;
-        border-left: 5px solid #ff4b4b;
-        margin-bottom: 20px;
+        border-left: 8px solid #ff4b4b;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        color: #31333F;
+        font-style: italic;
+        line-height: 1.6;
     }
     .stButton>button {
-        width: 100%;
-        border-radius: 20px;
+        background-color: #ff4b4b;
+        color: white;
+        border-radius: 25px;
+        height: 3em;
+        font-weight: bold;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# API Anahtarı Yönetimi
-# GitHub'a yükleyeceğimiz için anahtarı direkt koda yazmıyoruz, st.secrets kullanıyoruz.
+# 3. API YAPILANDIRMASI
+# Streamlit Cloud'da "Settings > Secrets" kısmına GEMINI_API_KEY eklemeyi unutmayın!
 try:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-except:
-    st.error("⚠️ API Anahtarı bulunamadı! Lütfen Streamlit Cloud ayarlarından GEMINI_API_KEY ekleyin.")
+    if "GEMINI_API_KEY" in st.secrets:
+        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    else:
+        st.error("🔑 API anahtarı bulunamadı. Lütfen Secrets kısmına ekleyin.")
+except Exception as e:
+    st.error(f"Bağlantı Hatası: {e}")
 
-# Yan Panel (Sidebar)
-with st.sidebar:
-    st.title("📖 Nasıl Çalışır?")
-    st.info("Altınay, her olayın merkezinde olan o efsane arkadaştır. Anahtar kelimeleri seçin ve onun inanılmaz geçmişine yolculuk yapın.")
-    st.markdown("---")
-    st.caption("v2.0 - Altınay Geliştirici Sürümü")
-
-# Ana Ekran
-st.title("🎭 ALTINAY ANI ÜRETİCİ")
-st.subheader("Her şeyle anısı olan efsane arkadaşınız için...")
-
-# Form Alanı
-with st.container():
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        kelimeler = st.text_input("🔑 Anahtar Kelimeler", placeholder="Örn: pizza, kedi, matematik, gizli servis")
-    with col2:
-        yil = st.number_input("📅 Yıl", min_value=1990, max_value=2024, value=2015)
-    
-    ton = st.select_slider(
-        "🎭 Anı Tonu",
-        options=["Dramatik", "Komik", "Nostaljik", "Epik", "Absürt"],
-        value="Komik"
-    )
-
-    uret_btn = st.button("✨ Efsanevi Anıyı Üret", type="primary")
-
-# Anı Üretme Fonksiyonu
+# 4. ANI ÜRETME FONKSİYONU
 def ani_uret(kelimeler, yil, ton):
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Hata aldığın modelleri tek tek deneyen sağlam yapı
+    modeller = ['gemini-1.5-flash', 'gemini-pro']
     
     prompt = f"""
-    Sen Altınay'ın yakın bir arkadaşısın ve onun hakkında bir anı anlatıyorsun. 
-    Altınay gerçekten HER ŞEYLE anısı olan, inanılmaz deneyimleri olan birisidir.
-    Kişilik: Altınay her zaman doğru zamanda yanlış yerde olan biridir.
-
-    Şu anahtar kelimelerle ilgili {yil} yılında yaşanmış bir Altınay anısı üret: {kelimeler}
-    Anı {ton} tonda olmalı.
+    Sen Altınay'ın yakın bir arkadaşısın. Altınay HER ŞEYLE anısı olan, inanılmaz biridir.
+    
+    Şu anahtar kelimelerle ilgili {yil} yılında yaşanmış bir anı anlat: {kelimeler}
+    Anı tonu: {ton}
     
     Kurallar:
-    - Birinci şahıs (ben) perspektifinden anlat.
-    - Anı gerçekçi detaylar içermeli ama Altınay'ın bu konudaki dehasını/şanssızlığını/absürtlüğünü vurgulamalı.
+    - Birinci şahıs (ben) ağzından anlat (Örn: "O gün Altınay'la beraber...")
     - 200-300 kelime arası olsun.
-    - Sadece anıyı yaz, giriş cümlesi (İşte anı vs.) ekleme.
+    - Sadece anıyı yaz, "Tabii ki işte anı" gibi girişler yapma.
     """
+
+    for model_adi in modeller:
+        try:
+            model = genai.GenerativeModel(model_adi)
+            response = model.generate_content(prompt)
+            return response.text
+        except:
+            continue # Bu model çalışmazsa sonrakine geç
     
-    response = model.generate_content(prompt)
-    return response.text
+    return "Maalesef şu an anı üretilemiyor. API anahtarınızı veya model erişiminizi kontrol edin."
 
-# Sonuç Ekranı
-if uret_btn:
-    if not kelimeler:
-        st.warning("Lütfen birkaç anahtar kelime girin!")
+# 5. ARAYÜZ TASARIMI
+st.title("🎭 ALTINAY ANI ÜRETİCİ")
+st.markdown("---")
+
+with st.sidebar:
+    st.header("📖 Hakkında")
+    st.write("Altınay, dünyanın en çok anıya sahip insanıdır. Siz sadece konu verin, o mutlaka oradaydı!")
+    st.divider()
+    st.caption("v2.0 - GitHub Deploy Hazır")
+
+# Giriş Alanları
+col1, col2 = st.columns([3, 1])
+with col1:
+    kelimeler = st.text_input("🔑 Anahtar Kelimeler (Virgülle ayırın)", placeholder="Ekmek arası, uzay gemisi, halay")
+with col2:
+    yil = st.number_input("📅 Yıl", 1990, 2025, 2018)
+
+ton = st.select_slider(
+    "🎭 Anının Havası",
+    options=["Dramatik", "Komik", "Nostaljik", "Epik", "Absürt"]
+)
+
+if st.button("✨ Efsanevi Anıyı Getir"):
+    if kelimeler:
+        with st.spinner("🌀 Altınay'ın hafızası taranıyor..."):
+            ani_sonucu = ani_uret(kelimeler, yil, ton)
+            
+            st.markdown(f"### 📖 Altınay'ın {yil} Serüveni")
+            st.markdown(f'<div class="ani-kart">{ani_sonucu}</div>', unsafe_allow_html=True)
+            
+            # Etkileşim
+            st.write("---")
+            c1, c2, c3 = st.columns(3)
+            if c1.button("👍 Harika!"): st.balloons()
+            if c2.button("😂 Sesli Güldüm"): st.snow()
+            if c3.button("🔄 Yeni Anı"): st.rerun()
     else:
-        with st.spinner("🎭 Altınay arşivi taranıyor, anı canlanıyor..."):
-            try:
-                ani = ani_uret(kelimeler, yil, ton)
-                st.session_state['son_ani'] = ani
-                
-                st.markdown(f"### 📖 Altınay'ın {yil} Anısı")
-                st.markdown(f"**Etiketler:** `{kelimeler}` | **Ton:** `{ton}`")
-                
-                st.markdown(f'<div class="ani-kart"><i>{ani}</i></div>', unsafe_allow_html=True)
-                
-                # Etkileşim Butonları
-                c1, c2, c3 = st.columns(3)
-                if c1.button("👍 Harika!"):
-                    st.balloons()
-                if c2.button("😂 Çok Komik"):
-                    st.snow()
-                c3.link_button("🔄 Yeni Anı", "/")
-                
-            except Exception as e:
-
-                st.error(f"Bir hata oluştu: {e}")
+        st.warning("Altınay'ın bir şeyler hatırlaması için anahtar kelime girmelisin!")
