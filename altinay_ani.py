@@ -1,11 +1,10 @@
 import streamlit as st
 import requests
-import json
 
 # 1. SAYFA AYARLARI
 st.set_page_config(page_title="Altınay Anı Üretici", page_icon="🎭")
 
-# 2. DOĞRUDAN API ANAHTARI (Verdiğin Key)
+# 2. DOĞRUDAN API ANAHTARI
 API_KEY = "AIzaSyCcwB7zXrnJqTpdAjd4-NSSKVATE25D7Nk"
 
 # 3. GÖRSEL TASARIM
@@ -19,63 +18,55 @@ st.markdown("""
         border-left: 10px solid #6c5ce7;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         color: #1a1a1a;
-        font-family: 'Times New Roman', serif;
-        font-size: 1.2rem;
         line-height: 1.6;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 4. ANI ÜRETME FONKSİYONU (En Uyumlu Model)
-def ani_uret_garanti(kelimeler, yil, ton):
-    # 'gemini-1.5-flash' hata verdiği için her hesapta çalışan 'gemini-pro' kullanıyoruz
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={API_KEY}"
+# 4. ÇALIŞAN MODELİ BULAN FONKSİYON
+def aniyi_uret_ne_varsa(kelimeler, yil, ton):
+    # Denenecek model isimleri
+    modeller = [
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash",
+        "gemini-pro",
+        "gemini-1.0-pro"
+    ]
     
-    headers = {'Content-Type': 'application/json'}
-    prompt_text = (
-        f"Sen Altınay'ın en yakın arkadaşısın. Altınay her konuda efsanevi bir anısı olan biridir. "
-        f"{yil} yılında geçen, konusu '{kelimeler}' olan {ton} bir anı anlat. "
-        f"Birinci şahıs ağzından anlat ve 150 kelime civarı olsun."
-    )
+    prompt = f"Sen Altınay'ın arkadaşısın. {yil} yılında geçen, {kelimeler} konulu {ton} bir anı anlat. 1. şahıs ağzından anlat."
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
     
-    payload = {
-        "contents": [{
-            "parts": [{"text": prompt_text}]
-        }]
-    }
-
-    try:
-        response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=20)
-        res_json = response.json()
-        
-        if response.status_code == 200:
-            return res_json['candidates'][0]['content']['parts'][0]['text']
-        else:
-            # Hata kodunu ve mesajını net görelim
-            msg = res_json.get('error', {}).get('message', 'Bilinmeyen Hata')
-            return f"🚨 Google Hatası: {msg}"
-    except Exception as e:
-        return f"🚨 Bağlantı Hatası: {str(e)}"
+    # Hangi sürümde (v1 veya v1beta) çalışacağını bulmak için tarıyoruz
+    for ver in ["v1", "v1beta"]:
+        for model in modeller:
+            url = f"https://generativelanguage.googleapis.com/{ver}/models/{model}:generateContent?key={API_KEY}"
+            try:
+                response = requests.post(url, json=payload, timeout=10)
+                if response.status_code == 200:
+                    res_json = response.json()
+                    return res_json['candidates'][0]['content']['parts'][0]['text'], model
+            except:
+                continue
+    
+    return None, None
 
 # 5. ARAYÜZ
 st.title("🎭 ALTINAY ANI ÜRETİCİ")
-st.write("---")
 
-kelimeler = st.text_input("🔑 Anahtar Kelimeler", placeholder="Örn: pazar arabası, uzay mekiği")
+kelimeler = st.text_input("🔑 Anahtar Kelimeler")
 yil = st.slider("📅 Yıl", 1990, 2026, 2018)
-ton = st.selectbox("🎭 Ton", ["Komik", "Absürt", "Epik", "Nostaljik"])
+ton = st.selectbox("🎭 Ton", ["Komik", "Absürt", "Epik"])
 
-if st.button("✨ Efsanevi Anıyı Getir", use_container_width=True):
-    if not kelimeler:
-        st.warning("Lütfen bir anahtar kelime girin!")
-    else:
-        with st.spinner("🌀 Altınay o günü hatırlamaya çalışıyor..."):
-            sonuc = ani_uret_garanti(kelimeler, yil, ton)
+if st.button("✨ Anıyı Getir"):
+    if kelimeler:
+        with st.spinner("Altınay'ın hafızası taranıyor..."):
+            sonuc, aktif_model = aniyi_uret_ne_varsa(kelimeler, yil, ton)
             
-            if "🚨" in sonuc:
-                st.error(sonuc)
-                st.info("İpucu: Eğer hala 'not found' diyorsa Google'ın bu anahtarı tanıması için 5-10 dakika bekleyin.")
-            else:
+            if sonuc:
                 st.markdown(f"### 📖 Altınay'ın {yil} Serüveni")
                 st.markdown(f'<div class="ani-kart">{sonuc}</div>', unsafe_allow_html=True)
+                st.caption(f"Kullanılan Model: {aktif_model}")
                 st.balloons()
+            else:
+                st.error("🚨 Hata: Hesabınızdaki hiçbir model henüz API üzerinden erişime açılmamış.")
+                st.info("Google Cloud Console'da 'Generative Language API' hizmetinin aktif olduğundan ve anahtarın doğru olduğundan emin olun.")
