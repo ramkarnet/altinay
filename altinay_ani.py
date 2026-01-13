@@ -1,59 +1,41 @@
 import streamlit as st
 import requests
-import json
 
 st.set_page_config(page_title="Altınay Anı Üretici", page_icon="🎭")
 
 # API Ayarı
-API_KEY = st.secrets.get("GEMINI_API_KEY")
+API_KEY = st.secrets.get("AIzaSyCcwB7zXrnJqTpdAjd4-NSSKVATE25D7Nk")
 
-def ani_uret_debug(kelimeler, yil, ton):
-    # Denenecek tüm kombinasyonlar
-    endpoints = [
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
-        "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent",
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
-    ]
+def ani_uret_v1(kelimeler, yil, ton):
+    # En stabil çalışan kararlı v1 adresi
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
     
-    prompt_text = f"Altınay hakkında {yil} yılında geçen, {kelimeler} konulu, {ton} bir anı anlat. 200 kelime."
-    payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
-    
-    last_error = ""
-    for url in endpoints:
-        try:
-            full_url = f"{url}?key={API_KEY}"
-            response = requests.post(full_url, json=payload, timeout=10)
-            res_json = response.json()
-            
-            if response.status_code == 200:
-                # BAŞARILI!
-                return res_json['candidates'][0]['content']['parts'][0]['text'], url.split('/')[-1].split(':')[0]
-            else:
-                last_error = f"{url.split('/')[-2]} sürümü {res_json.get('error', {}).get('message', 'Bilinmeyen Hata')}"
-        except Exception as e:
-            last_error = str(e)
-            continue
-            
-    return None, last_error
+    payload = {
+        "contents": [{
+            "parts": [{"text": f"Sen Altınay'ın arkadaşısın. {yil} yılında geçen, '{kelimeler}' konulu {ton} bir anı anlat. samimi ol."}]
+        }]
+    }
 
-# UI
+    try:
+        response = requests.post(url, json=payload)
+        res_json = response.json()
+        if response.status_code == 200:
+            return res_json['candidates'][0]['content']['parts'][0]['text']
+        else:
+            return f"🚨 Hata: {res_json.get('error', {}).get('message', 'Bilinmeyen hata')}"
+    except Exception as e:
+        return f"🚨 Bağlantı hatası: {e}"
+
+# Basit Arayüz
 st.title("🎭 Altınay Anı Üretici")
-st.write("Eğer yine hata alırsak, hata mesajını buraya kopyala, sorunu kökten çözelim.")
+kelimeler = st.text_input("Anahtar Kelimeler (Örn: kedi, pizza)")
+yil = st.number_input("Yıl", 1990, 2026, 2015)
+ton = st.selectbox("Ton", ["Komik", "Absürt", "Dramatik"])
 
-kelimeler = st.text_input("Anahtar Kelimeler")
-yil = st.slider("Yıl", 1990, 2026, 2018)
-ton = st.selectbox("Ton", ["Komik", "Absürt", "Epik", "Dramatik"])
-
-if st.button("✨ Anıyı Üret"):
-    if not API_KEY:
-        st.error("Secrets'ta anahtar yok!")
-    elif kelimeler:
-        with st.spinner("Modeller taranıyor ve anı üretiliyor..."):
-            sonuc, debug_info = ani_uret_debug(kelimeler, yil, ton)
-            if sonuc:
-                st.success(f"Başarılı! (Kullanılan Model: {debug_info})")
-                st.info(sonuc)
-                st.balloons()
-            else:
-                st.error(f"🚨 Hala Hata Alıyoruz: {debug_info}")
-                st.warning("Eğer 'API key not valid' derse anahtarı yanlış yapıştırdın demektir. 'Not found' derse Google henüz projeni aktifleştirmemiştir.")
+if st.button("✨ Anı Üret"):
+    if kelimeler and API_KEY:
+        with st.spinner("Altınay hatırlıyor..."):
+            sonuc = ani_uret_v1(kelimeler, yil, ton)
+            st.markdown("---")
+            st.write(sonuc)
+            if "🚨" not in sonuc: st.balloons()
