@@ -6,45 +6,52 @@ API_KEY = "AIzaSyADgezoMbaavhLi0vac6lMUOkoRfKeh47w"
 
 st.set_page_config(page_title="Altınay Anı Üretici", page_icon="🎭")
 
-def aniyi_getir_v1(kelimeler, yil, ton):
-    # Hata veren v1beta ve -latest yerine en kararlı v1 yolunu kullanıyoruz
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={API_KEY}"
+def model_bul_ve_uret(kelimeler, yil, ton):
+    # Denenecek tüm olası model varyasyonları
+    modeller = [
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
+        "gemini-pro",
+        "gemini-1.0-pro"
+    ]
+    # Denenecek tüm API sürümleri
+    versiyonlar = ["v1beta", "v1"]
     
-    payload = {
-        "contents": [{
-            "parts": [{"text": f"Sen Altınay'ın arkadaşısın. {yil} yılında geçen, '{kelimeler}' konulu {ton} bir anı anlat. Samimi ol."}]
-        }]
-    }
+    prompt = f"Sen Altınay'ın arkadaşısın. {yil} yılında geçen, '{kelimeler}' konulu {ton} bir anı anlat. Samimi ol."
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
-    try:
-        response = requests.post(url, json=payload, timeout=20)
-        if response.status_code == 200:
-            res_json = response.json()
-            return res_json['candidates'][0]['content']['parts'][0]['text']
-        else:
-            # Eğer gemini-pro da hata verirse, otomatik olarak flash'ı dene
-            url_flash = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
-            resp_flash = requests.post(url_flash, json=payload, timeout=20)
-            if resp_flash.status_code == 200:
-                return resp_flash.json()['candidates'][0]['content']['parts'][0]['text']
-            
-            return f"🚨 Google hala hazır değil. Hata: {resp_flash.text}"
-    except Exception as e:
-        return f"🚨 Bağlantı sorunu: {str(e)}"
+    for ver in versiyonlar:
+        for m in modeller:
+            url = f"https://generativelanguage.googleapis.com/{ver}/models/{m}:generateContent?key={API_KEY}"
+            try:
+                response = requests.post(url, json=payload, timeout=10)
+                if response.status_code == 200:
+                    res_json = response.json()
+                    # Başarılı olursa anıyı ve kullanılan modeli döndür
+                    return res_json['candidates'][0]['content']['parts'][0]['text'], m
+            except:
+                continue
+    
+    return None, None
 
 # ARAYÜZ
 st.title("🎭 Altınay Anı Üretici")
+st.write("Hesabınızdaki en uygun model otomatik olarak seçilecektir.")
+
 kelimeler = st.text_input("🔑 Anahtar Kelimeler")
 yil = st.slider("📅 Yıl", 1990, 2026, 2020)
-ton = st.selectbox("🎭 Ton", ["Komik", "Absürt", "Epik"])
+ton = st.selectbox("🎭 Ton", ["Komik", "Absürt", "Nostaljik"])
 
 if st.button("✨ Anıyı Üret"):
     if kelimeler:
-        with st.spinner("🌀 Altınay o günü hatırlıyor..."):
-            sonuc = aniyi_getir_v1(kelimeler, yil, ton)
-            st.markdown("---")
-            if "🚨" in sonuc:
-                st.error(sonuc)
-            else:
+        with st.spinner("🌀 Altınay anılarını tarıyor..."):
+            sonuc, aktif_model = model_bul_ve_uret(kelimeler, yil, ton)
+            
+            if sonuc:
+                st.markdown("---")
                 st.success(sonuc)
+                st.caption(f"🚀 Kullanılan Model: {aktif_model}")
                 st.balloons()
+            else:
+                st.error("🚨 Google hala anahtarı ve modelleri hesabınıza tanımlıyor.")
+                st.info("İpucu: Google Cloud Console'da 'Generative Language API' servisini kapatıp açmak süreci hızlandırabilir.")
