@@ -3,7 +3,7 @@ import requests
 import json
 
 # 1. DOĞRUDAN API ANAHTARIN (Yeşil tikli olan)
-API_KEY = "AIzaSyCcwB7zXrnJqTpdAjd4-NSSKVATE25D7Nk"
+API_KEY = "AIzaSyADgezoMbaavhLi0vac6lMUOkoRfKeh47w"
 
 st.set_page_config(page_title="Altınay Anı Üretici", page_icon="🎭")
 
@@ -47,3 +47,4 @@ if st.button("✨ Anıyı Üret"):
                 st.balloons()
             else:
                 st.error("🚨 Google hala anahtarı onaylıyor. Lütfen 15 dakika bekleyip tekrar deneyin.")
+
