@@ -101,7 +101,7 @@ Sadece anıyı yaz, başka açıklama ekleme."""
 
                 # OpenRouter API çağrısı
                 response = requests.post(
-                    url="https://openrouter.ai/api/v1/chat/completions",
+                    "model": "google/gemma-2-9b-it:free",,
                     headers={
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json"
@@ -168,3 +168,4 @@ st.markdown("""
     <p>💰 Tamamen bedava!</p>
 </div>
 """, unsafe_allow_html=True)
+
