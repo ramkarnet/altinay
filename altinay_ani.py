@@ -31,7 +31,7 @@ with st.sidebar:
     
     st.info("💡 **İpucu:** Ne kadar absürd kelimeler girerseniz o kadar eğlenceli sonuçlar alırsınız!")
     
-    st.success("✨ **Powered by OpenRouter** - Google Gemma 2 tamamen bedava!")
+    st.success("✨ **Powered by OpenRouter** - Hermes 3 Llama 405B tamamen bedava!")
 
 # Ana form
 col1, col2 = st.columns([3, 1])
@@ -107,7 +107,7 @@ Sadece anıyı yaz, başka açıklama ekleme."""
                         "Content-Type": "application/json"
                     },
                     data=json.dumps({
-                        "model": "google/gemma-2-9b-it:free",
+                        "model": "nousresearch/hermes-3-llama-3.1-405b:free",
                         "messages": [
                             {
                                 "role": "user",
@@ -164,7 +164,7 @@ st.divider()
 st.markdown("""
 <div style="text-align: center; color: #666; font-size: 0.9em;">
     <p>🎭 Altınay Anı Üretici v1.0</p>
-    <p>OpenRouter + Google Gemma 2 AI | Tüm anılar kurgusaldır 😄</p>
+    <p>OpenRouter + Hermes 3 Llama 405B | Tüm anılar kurgusaldır 😄</p>
     <p>💰 Tamamen bedava!</p>
 </div>
 """, unsafe_allow_html=True)
