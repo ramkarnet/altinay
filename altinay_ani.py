@@ -1,49 +1,170 @@
 import streamlit as st
 import requests
+import json
+import os
 
-# 1. Ayarlar ve Güvenlik
-st.set_page_config(page_title="Altınay Anı Üretici", page_icon="🎭")
+# Sayfa yapılandırması
+st.set_page_config(
+    page_title="Altınay Anı Üretici 🎭",
+    page_icon="🎭",
+    layout="centered"
+)
 
-try:
-    API_KEY = st.secrets["GEMINI_API_KEY"]
-except:
-    st.error("🚨 Hata: Streamlit Secrets kısmına API anahtarı eklenmemiş!")
-    st.stop()
+# Başlık ve açıklama
+st.title("🎭 ALTINAY ANI ÜRETİCİ")
+st.markdown("### *Her şeyle anısı olan efsane arkadaşınız için özel anı üreticisi*")
+st.divider()
 
-# 2. Anı Üretme Fonksiyonu
-def aniyi_getir(kelimeler, yil, ton):
-    # 2026'da en stabil çalışan v1 yolu
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+# Yan panel bilgilendirme
+with st.sidebar:
+    st.header("📖 Nasıl Kullanılır?")
+    st.markdown("""
+    1. **Anahtar kelimeler** girin (örn: pizza, kedi, matematik)
+    2. **Yıl** seçin (1990-2024)
+    3. **Anı Üret** butonuna tıklayın
+    4. Altınay'ın o konuyla ilgili muhteşem anısını okuyun! 😄
     
-    payload = {
-        "contents": [{
-            "parts": [{"text": f"Sen Altınay'ın en yakın arkadaşısın. {yil} yılında geçen, konusu '{kelimeler}' olan {ton} bir anı anlat. Samimi ve akıcı olsun."}]
-        }]
-    }
+    ---
+    
+    *Not: Bu uygulama tamamen eğlence amaçlıdır ve yapay zeka tarafından üretilen kurgusal anılardır.*
+    """)
+    
+    st.info("💡 **İpucu:** Ne kadar absürd kelimeler girerseniz o kadar eğlenceli sonuçlar alırsınız!")
+    
+    st.success("✨ **Powered by OpenRouter** - Llama 3.1 tamamen bedava!")
 
-    try:
-        response = requests.post(url, json=payload, timeout=15)
-        if response.status_code == 200:
-            return response.json()['candidates'][0]['content']['parts'][0]['text']
-        else:
-            return f"🚨 Google Hatası: {response.status_code}. Lütfen anahtarın aktif olduğundan emin ol."
-    except Exception as e:
-        return f"🚨 Bağlantı Hatası: {str(e)}"
+# Ana form
+col1, col2 = st.columns([3, 1])
 
-# 3. Arayüz
-st.title("🎭 Altınay Anı Üretici")
-st.write("Hoş geldin! Altınay'ın efsanevi anılarını yeniden canlandıralım.")
+with col1:
+    keywords = st.text_input(
+        "🔑 Anahtar Kelimeler",
+        placeholder="Örn: pizza, kedi, matematik sınavı",
+        help="Virgülle ayırarak birden fazla kelime girebilirsiniz"
+    )
 
-kelimeler = st.text_input("🔑 Hatırlatıcı Kelimeler (Örn: dondurma, uçak)")
-yil = st.slider("📅 Yıl", 1990, 2026, 2020)
-ton = st.selectbox("🎭 Ton", ["Komik", "Absürt", "Efsanevi", "Dramatik"])
+with col2:
+    year = st.number_input(
+        "📅 Yıl",
+        min_value=1990,
+        max_value=2024,
+        value=2010,
+        step=1
+    )
 
-if st.button("✨ Anıyı Hatırla", use_container_width=True):
-    if kelimeler:
-        with st.spinner("🌀 Altınay uzaklara daldı, hatırlamaya çalışıyor..."):
-            sonuc = aniyi_getir(kelimeler, yil, ton)
-            st.markdown("---")
-            st.info(sonuc)
-            if "🚨" not in sonuc: st.balloons()
+# Anı tonu seçimi
+tone = st.select_slider(
+    "🎨 Anı Tonu",
+    options=["Dramatik", "Komik", "Nostaljik", "Epik", "Absürt"],
+    value="Komik"
+)
+
+st.divider()
+
+# Anı üret butonu
+if st.button("✨ Anı Üret", type="primary", use_container_width=True):
+    if not keywords.strip():
+        st.error("❌ Lütfen en az bir anahtar kelime girin!")
     else:
-        st.warning("Lütfen bir kelime gir ki Altınay hatırlasın!")
+        with st.spinner("🎭 Altınay'ın anısı üretiliyor..."):
+            try:
+                # OpenRouter API configuration
+                api_key = st.secrets.get("OPENROUTER_API_KEY", os.environ.get("OPENROUTER_API_KEY"))
+                
+                if not api_key:
+                    st.error("❌ OPENROUTER_API_KEY bulunamadı! Lütfen API anahtarınızı ayarlayın.")
+                    st.info("💡 API anahtarı almak için: https://openrouter.ai/keys")
+                    st.info("🎁 İlk kayıtta $1 bedava kredi veriyorlar!")
+                    st.stop()
+                
+                # Prompt hazırlama
+                tone_descriptions = {
+                    "Dramatik": "dramatik, duygusal ve etkileyici bir şekilde",
+                    "Komik": "komik, eğlenceli ve gülünç detaylarla dolu",
+                    "Nostaljik": "nostaljik, içten ve özlem dolu",
+                    "Epik": "epik, kahramanca ve abartılı bir şekilde",
+                    "Absürt": "tamamen absürt, mantıksız ama eğlenceli bir şekilde"
+                }
+                
+                prompt = f"""Sen Altınay'ın yakın bir arkadaşısın ve onun hakkında bir anı anlatıyorsun. 
+Altınay gerçekten HER ŞEYLE anısı olan, inanılmaz deneyimleri olan birisidir.
+
+Şu anahtar kelimelerle ilgili {year} yılında yaşanmış bir Altınay anısı üret: {keywords}
+
+Anı {tone_descriptions[tone]} olmalı.
+
+Anıyı birinci şahıs (ben) perspektifinden anlat, sanki sen oradaydın ve Altınay'la birlikte yaşadın.
+Anı gerçekçi detaylar içermeli ama aynı zamanda Altınay'ın bu konuyla nasıl özel bir bağlantısı olduğunu göstermeli.
+200-300 kelime arası olsun.
+
+Sadece anıyı yaz, başka açıklama ekleme."""
+
+                # OpenRouter API çağrısı
+                response = requests.post(
+                    url="https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    data=json.dumps({
+                        "model": "meta-llama/llama-3.1-8b-instruct:free",
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ]
+                    })
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    ani_metni = result['choices'][0]['message']['content']
+                    
+                    # Sonucu göster
+                    st.success("✅ Anı başarıyla üretildi!")
+                    st.markdown("---")
+                    
+                    # Anı kartı
+                    st.markdown(f"""
+                    <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; border-left: 5px solid #ff4b4b;">
+                        <h3 style="color: #ff4b4b; margin-top: 0;">📖 Altınay'ın {year} Anısı</h3>
+                        <p style="font-style: italic; color: #666;">Anahtar Kelimeler: {keywords}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("")
+                    st.markdown(f"*{ani_metni}*")
+                    st.markdown("---")
+                    
+                    # Paylaş butonu
+                    st.markdown("### 💬 Beğendiniz mi?")
+                    col_a, col_b, col_c = st.columns(3)
+                    with col_a:
+                        if st.button("👍 Harika!"):
+                            st.balloons()
+                    with col_b:
+                        if st.button("😂 Çok Komik"):
+                            st.snow()
+                    with col_c:
+                        if st.button("🔄 Yeni Anı"):
+                            st.rerun()
+                else:
+                    st.error(f"❌ API Hatası: {response.status_code}")
+                    st.error(f"Detay: {response.text}")
+                    st.info("💡 API anahtarınızı kontrol edin.")
+                
+            except Exception as e:
+                st.error(f"❌ Bir hata oluştu: {str(e)}")
+                st.info("💡 API anahtarınızı kontrol edin.")
+                st.info("🔑 Yeni API anahtarı: https://openrouter.ai/keys")
+
+# Alt bilgi
+st.divider()
+st.markdown("""
+<div style="text-align: center; color: #666; font-size: 0.9em;">
+    <p>🎭 Altınay Anı Üretici v1.0</p>
+    <p>OpenRouter + Llama 3.1 AI | Tüm anılar kurgusaldır 😄</p>
+    <p>💰 Tamamen bedava!</p>
+</div>
+""", unsafe_allow_html=True)
